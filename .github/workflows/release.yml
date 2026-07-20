@@ -3,6 +3,7 @@ name: Release Standalone Executables
 # Triggers the workflow on push or pull request events
 on:
   push:
+    branches: [main, next]
   pull_request:
   workflow_dispatch:
 
@@ -74,9 +75,13 @@ jobs:
       - name: Determine Release Type
         id: determine_release
         run: |
-          if git rev-parse "${VERSION}" >/dev/null 2>&1; then
-            echo "Git tag ${VERSION} already exists. Skipping final release."
-            echo "final_release=tag" >> $GITHUB_ENV
+          # Decide by event/ref, never by parsing the version string:
+          #   PR            -> draft     (tied to the PR head commit)
+          #   push to main  -> latest    (protected branch, marked latest)
+          #   push to next  -> prep      (prerelease)
+          #   anything else -> draft
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "final_release=draft" >> $GITHUB_ENV
           elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "final_release=latest" >> $GITHUB_ENV
           elif [ "${{ github.ref }}" = "refs/heads/next" ]; then
@@ -84,34 +89,40 @@ jobs:
           else
             echo "final_release=draft" >> $GITHUB_ENV
           fi
-        env:
-          VERSION: ${{ env.version }}
 
       - name: Create GitHub Release
         id: publish_release
         run: |
-          if [ "$FINAL_RELEASE" = "latest" ]; then
-            RELEASE_NAME="${VERSION}"
-            PUBLISH="--latest"
-          elif [ "$FINAL_RELEASE" = "tag" ]; then
-            RELEASE_NAME="${VERSION}"
-            PUBLISH="--verify-tag"
-          else
-            TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
-            RELEASE_NAME="${VERSION}-${TIMESTAMP}"
-            if [ "$FINAL_RELEASE" = "draft" ]; then
-              PUBLISH="--draft"
-            else
-              PUBLISH="--prerelease"
-            fi
+          case "$FINAL_RELEASE" in
+            latest)
+              RELEASE_NAME="${VERSION}"
+              FLAGS="--latest --target ${TARGET_SHA}"
+              ;;
+            prep)
+              RELEASE_NAME="${VERSION}-$(date +'%Y%m%d-%H%M%S')"
+              FLAGS="--prerelease --target ${TARGET_SHA}"
+              ;;
+            *)
+              RELEASE_NAME="${VERSION}-$(date +'%Y%m%d-%H%M%S')"
+              FLAGS="--draft --target ${TARGET_SHA}"
+              ;;
+          esac
+
+          # Guard against clobbering an existing tag/release on re-runs.
+          if git show-ref --tags --verify --quiet "refs/tags/${RELEASE_NAME}"; then
+            echo "Tag ${RELEASE_NAME} already exists; skipping release creation."
+            exit 0
           fi
+
           gh release create "$RELEASE_NAME" \
             --title="Release $RELEASE_NAME" \
             --generate-notes \
+            $FLAGS \
             release/skaffold-linux-amd64 \
-            release/skaffold-linux-amd64.sha256 \
-            "$PUBLISH"
+            release/skaffold-linux-amd64.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ env.version }}
           FINAL_RELEASE: ${{ env.final_release }}
+          # PR events: the PR head commit; push events: the pushed commit.
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
