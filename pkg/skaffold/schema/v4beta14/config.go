@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package latest
+package v4beta14
 
 import (
 	"encoding/json"
@@ -25,8 +25,8 @@ import (
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/schema/util"
 )
 
-// This config version is not yet released, it is SAFE TO MODIFY the structs in this file.
-const Version string = "skaffold/v4beta15"
+// !!! WARNING !!! This config version is already released, please DO NOT MODIFY the structs in this file.
+const Version string = "skaffold/v4beta14"
 
 // NewSkaffoldConfig creates a SkaffoldConfig
 func NewSkaffoldConfig() util.VersionedConfig {
@@ -1607,11 +1607,6 @@ type DockerArtifact struct {
 	// CacheFrom lists the Docker images used as cache sources.
 	// For example: `["golang:1.10.1-alpine3.7", "alpine:3.7"]`.
 	CacheFrom []string `yaml:"cacheFrom,omitempty"`
-
-	// CacheTo lists the Docker images used as cache destination.
-	// If omitted, cacheFrom is used with max mode to export all layers.
-	// For example: `["type=registry,ref=gcr.io/k8s-skaffold/example:cache,mode=max"]`.
-	CacheTo []string `yaml:"cacheTo,omitempty"`
 
 	// CliFlags are any additional flags to pass to the local daemon during a build.
 	// These flags are only used during a build through the Docker CLI.
