@@ -25,8 +25,8 @@ import (
 	"github.com/GoogleContainerTools/skaffold/v2/pkg/skaffold/schema/util"
 )
 
-// !!! WARNING !!! This config version is already released, please DO NOT MODIFY the structs in this file.
-const Version string = "skaffold/v4beta13"
+// This config version is not yet released, it is SAFE TO MODIFY the structs in this file.
+const Version string = "skaffold/v4beta15"
 
 // NewSkaffoldConfig creates a SkaffoldConfig
 func NewSkaffoldConfig() util.VersionedConfig {
@@ -1323,6 +1323,10 @@ type BuildpackArtifact struct {
 
 	// Volumes support mounting host volumes into the container.
 	Volumes []*BuildpackVolume `yaml:"volumes,omitempty"`
+
+	// BuildArgs are additional args passed to the `pack` build command.
+	// For example: `["--network", "host", "--cache-image", "gcr.io/my-project/my-cache"]`.
+	BuildArgs []string `yaml:"buildArgs,omitempty"`
 }
 
 // BuildpackDependencies *alpha* is used to specify dependencies for an artifact built by buildpacks.
